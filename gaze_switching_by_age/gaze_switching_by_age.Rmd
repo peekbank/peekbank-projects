@@ -1,0 +1,26 @@
+---
+title: "longitudinal_switching_analysis"
+output: html_document
+date: '2024-08-27'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Developmental changes in gaze switching between target and distractor
+
+See notes here: https://docs.google.com/document/d/1ySCNzheHPT261JNX44VyonfwkapzK212TEMS3DFS4xA/edit
+
+```{r loading_data}
+# Loading peekbank data for X dataset
+```
+
+
+```{r plotting_gaze_patterns}
+# 
+```
+
+```{r plotting_gaze_patterns}
+# 
+```
