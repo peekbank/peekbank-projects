@@ -1,0 +1,69 @@
+---
+title: "Data loading"
+author: "Martin"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    code_folding: hide
+
+---
+
+```{r setup, echo = FALSE}
+suppressPackageStartupMessages(library(here))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(peekbankr))
+suppressPackageStartupMessages(library(lme4))
+
+# Seed for random number generation
+set.seed(43)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed, cache = TRUE, 
+                      message=FALSE, warning=FALSE, error=FALSE)
+FIRST_TIME <- TRUE
+repo_name <- "workshop_2024_dev"
+```
+
+## Get data
+
+```{r, eval=FIRST_TIME}
+con <- connect_to_peekbank("workshop_2024_dev")
+all_aoi_timepoints <- get_aoi_timepoints(connection = con, rle=FALSE)
+
+con <- connect_to_peekbank("workshop_2024_dev")
+all_stimuli <- collect(get_stimuli(connection = con))
+all_administrations <- collect(get_administrations(connection = con))
+all_subjects <- collect(get_subjects(connection = con))
+all_trial_types <- collect(get_trial_types(connection = con))
+all_trials <- collect(get_trials(connection = con))
+
+aoi_data_joined <- all_aoi_timepoints |>
+  right_join(all_administrations) |>
+  right_join(all_subjects) |>
+  right_join(all_trials) |>
+  right_join(all_trial_types) |>
+  mutate(stimulus_id = target_id) |>
+  right_join(all_stimuli) |>
+  # select(dataset_name, subject_id, administration_id, trial_id, trial_order, dataset_id, 
+  #        stimulus_id, distractor_id, t_norm, age, aoi, english_stimulus_label, 
+  #        stimulus_novelty, target_side) %>%
+  rename(target_label = english_stimulus_label, 
+         target_id = stimulus_id) %>%
+  left_join(all_stimuli %>%
+              select(stimulus_id, dataset_id, 
+                     stimulus_novelty, english_stimulus_label) %>%
+              rename(distractor_id = stimulus_id, 
+                     distractor_novelty = stimulus_novelty,
+                     distractor_label = english_stimulus_label))
+
+save(aoi_data_joined, file= here("cached_intermediates","1_aoi_data_joined.Rds"))
+```
+
+Check on number of datasets. 
+
+```{r}
+load(here("cached_intermediates", "1_aoi_data_joined.Rds"))
+length(unique(aoi_data_joined$dataset_name))
+unique(aoi_data_joined$dataset_name)
+```
