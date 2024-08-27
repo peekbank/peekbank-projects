@@ -1,0 +1,112 @@
+---
+title: "10 Novel word learning"
+author: "Alvin Tan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Setup and load data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+library(tidyverse)
+library(glue)
+#library(peekbankr)
+```
+
+```{r load_data}
+load("cached_intermediates/1_aoi_data_joined.Rds")
+```
+
+# Data processing
+Filtering down to just novel trials (NN, NF, FN)
+```{r}
+novel_trials <- aoi_data_joined |> 
+  filter(!is.na(subject_id), 
+         stimulus_novelty == "novel" |
+           distractor_novelty == "novel") |> 
+  mutate(trial_class = case_when(
+    stimulus_novelty == "novel" & distractor_novelty == "novel" ~ "NN",
+    stimulus_novelty == "novel" ~ "NF",
+    distractor_novelty == "novel" ~ "FN"
+  ),
+  trial_labels = glue("{target_label}_{distractor_label}"))
+```
+
+Sanity time-course plot
+```{r}
+novel_trials_plotting <- novel_trials |> 
+  group_by(dataset_name, trial_class, trial_labels, t_norm) |>
+  summarise(correct = sum(aoi == "target") / 
+              sum(aoi %in% c("target","distractor")))
+```
+
+```{r}
+ggplot(novel_trials_plotting |> filter(dataset_name != "moore_bergelson_2022_verb"),
+       aes(x = t_norm, y = correct)) +
+  # geom_point() +
+  geom_smooth(aes(color = dataset_name, group = trial_labels), linewidth = .5, se = F) +
+  geom_smooth(aes(x = t_norm, y = correct), col = "#000000") +
+  geom_hline(yintercept = .5, lty = "dashed") +
+  geom_vline(xintercept = 0, lty = "dotted") +
+  facet_wrap(~ trial_class) +
+  coord_cartesian(xlim = c(-500, 4000)) +
+  theme_classic() +
+  theme(legend.position = "bottom",
+        panel.border = element_rect(colour = "#000000", fill = NA, linewidth = 1),
+        axis.line = element_line(linewidth = 0))
+```
+
+```{r, eval=F}
+novel_trials_plotting |> 
+  select(dataset_name, trial_class, trial_labels) |> 
+  distinct() |> 
+  write_csv("novel_trial_definition.csv")
+```
+
+# Get accuracies and RTs
+```{r}
+ACC_START = 300
+ACC_END = 4000
+RT_START = ACC_START
+
+novel_trials_acc <- novel_trials |> 
+  filter(t_norm >= ACC_START, t_norm <= ACC_END) |> 
+  group_by(dataset_name, administration_id, trial_class, trial_labels, trial_id) |> 
+  summarise(acc = sum(aoi == "target") / 
+              sum(aoi %in% c("target","distractor")))
+novel_trials_aoi0 <- novel_trials |> 
+  filter(t_norm == 0) |> 
+  mutate(exclude = aoi == "target") |> 
+  select(dataset_name, administration_id, trial_id, exclude)
+novel_trials_rt <- novel_trials |> 
+  filter(t_norm >= 0,
+         aoi == "target") |> 
+  group_by(trial_id) |> 
+  slice(1) |> 
+  filter(t_norm >= RT_START) |> 
+  left_join(novel_trials_aoi0) |> 
+  filter(!exclude) |> 
+  rename(rt = t_norm)
+
+novel_trials_perf <- novel_trials_acc |> 
+  left_join(novel_trials_rt)
+```
+
+```{r}
+ggplot(novel_trials_perf,
+       aes(x = age, y = acc, col = trial_class)) +
+  geom_point(alpha = .1) +
+  geom_smooth() +
+  theme_classic()
+```
+
+```{r}
+ggplot(novel_trials_perf,
+       aes(x = age, y = rt, col = trial_class)) +
+  geom_point(alpha = .1) +
+  geom_smooth() +
+  theme_classic()
+```
