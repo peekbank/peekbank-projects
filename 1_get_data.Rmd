@@ -27,39 +27,95 @@ repo_name <- "workshop_2024_dev"
 
 ## Get data
 
+---
+title: "Trial analysis 1: Data loading"
+author: "Mike"
+date: "2/19/2021"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    code_folding: hide
+
+---
+
+```{r setup, echo = FALSE}
+suppressPackageStartupMessages(library(here))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(peekbankr))
+suppressPackageStartupMessages(library(lme4))
+# suppressPackageStartupMessages(library(ggpmisc))
+suppressPackageStartupMessages(library(ggrepel))
+suppressPackageStartupMessages(library(ggthemes))
+
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed, cache = TRUE, 
+                      message=FALSE, warning=FALSE, error=FALSE)
+FIRST_TIME <- TRUE
+```
+
+
+This markdown documents a new way of thinking about modeling variation in LWL data. The idea is to try to:
+
+1. extract a summary statistic for each trial
+2. model these summaries with LMMs of various types
+
+The trouble is, what's the right summary statistic? It might be that there's not just one! But let's assume there is one and we just need to sum it up right. 
+
+So we'll start by trying to figure out what the best measure is. We're going to make decisions to maximize within-experiment reliability via ICCs.
+
+We're focused on familiar words here. 
+
+## Get data
+
+
+## Get data
+
 ```{r, eval=FIRST_TIME}
-con <- connect_to_peekbank("workshop_2024_dev")
+con <- connect_to_peekbank(db_version = "workshop_2024_dev")
 all_aoi_timepoints <- get_aoi_timepoints(connection = con, rle=FALSE)
 
-con <- connect_to_peekbank("workshop_2024_dev")
+# reload connection in case it is stale
+con <- connect_to_peekbank(db_version = "workshop_2024_dev")
 all_stimuli <- collect(get_stimuli(connection = con))
 all_administrations <- collect(get_administrations(connection = con))
 all_subjects <- collect(get_subjects(connection = con))
 all_trial_types <- collect(get_trial_types(connection = con))
 all_trials <- collect(get_trials(connection = con))
-all_datasets <- collect(get_datasets(connection=con))
+```
 
+Now do the joins. 
+
+```{r}
 aoi_data_joined <- all_aoi_timepoints |>
   right_join(all_administrations) |>
   right_join(all_subjects) |>
   right_join(all_trials) |>
   right_join(all_trial_types) |>
   mutate(stimulus_id = target_id) |>
-  right_join(all_datasets) |> 
   right_join(all_stimuli) |>
-  # select(dataset_name, subject_id, administration_id, trial_id, trial_order, dataset_id, 
-  #        stimulus_id, distractor_id, t_norm, age, aoi, english_stimulus_label, 
-  #        stimulus_novelty, target_side) %>%
+  select(dataset_name, subject_id, administration_id, trial_id, trial_order, dataset_id, 
+         stimulus_id, distractor_id, t_norm, age, aoi, english_stimulus_label, 
+         stimulus_novelty, target_side, vanilla_trial) %>%
   rename(target_label = english_stimulus_label, 
-         target_id = stimulus_id) |> 
+         target_id = stimulus_id) %>%
   left_join(all_stimuli %>%
               select(stimulus_id, dataset_id, 
-                     stimulus_novelty, english_stimulus_label) |> 
+                     stimulus_novelty, english_stimulus_label) %>%
               rename(distractor_id = stimulus_id, 
                      distractor_novelty = stimulus_novelty,
                      distractor_label = english_stimulus_label))
 
 save(aoi_data_joined, file= here("cached_intermediates","1_aoi_data_joined.Rds"))
+```
+
+
+Looks like a very small number of rows get added in the join, probably a sign of an issue/ ambiguity somewhere. These are due to NA subject IDs, so we don't figure it out and just filter. 
+
+```{r}
+aoi_data_joined <- filter(aoi_data_joined, !is.na(subject_id))
 ```
 
 Check on number of datasets. 
