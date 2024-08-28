@@ -80,6 +80,13 @@ ggplot(admin_rle_data_with_times,aes(age,avg_switch_num)) +
   geom_smooth(method="lm")#+
   #facet_wrap(~dataset_name)
 
+ggplot(admin_rle_data_with_times,aes(age,avg_length)) +
+  geom_point(alpha=0.1)+
+  geom_smooth(method="loess",se=F)#+
+  #facet_wrap(~dataset_name)
+
+
+
 
 ```
 
