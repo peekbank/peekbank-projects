@@ -26,8 +26,7 @@ load(here("cached_intermediates/1_aoi_data_joined.Rds"))
 
 ```{r}
 rle_data <- aoi_data_joined %>%
-  filter(any(t_norm == 0), # must have data at 0
-         t_norm >= 0) %>% # only pass data after 0
+  filter(any(t_norm == 0)) %>% # only pass data after 0
   group_by(dataset_name, dataset_id,subject_id, administration_id, trial_id) %>%
   reframe(min_tnorm=min(t_norm),
           max_tnorm=max(t_norm),
@@ -42,13 +41,15 @@ rle_data_with_times <- rle_data %>%
     cumulative_length_end = cumsum(lengths),
     t_start = min_tnorm+cumulative_length_start*25,
     t_end = min_tnorm+(cumulative_length_end-1)*25,
-  ) %>%
+    trial_stage = ifelse(t_end < 0, "pre-critical",
+                         ifelse(t_end < max_tnorm/2, "first half",
+                                "second half")))
   #total_switches
-  mutate(
-    switch_num=length(values)-1,
-    switch_num_per_trial_len = switch_num/total_trial_length,
-    length_ms=lengths*25
-  )
+  # mutate(
+  #   switch_num=length(values)-1,
+  #   switch_num_per_trial_len = switch_num/total_trial_length,
+  #   length_ms=lengths*25
+  # )
 
 #join back in relevant data
 rle_data_with_times <- left_join(rle_data_with_times,aoi_data_joined %>%
