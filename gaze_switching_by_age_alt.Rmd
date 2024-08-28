@@ -56,7 +56,8 @@ rle_data_with_times <- left_join(rle_data_with_times,aoi_data_joined %>%
                    select(subject_id, administration_id, trial_id, 
                           age, dataset_name,
                           vanilla_trial,target_label, target_side,
-                          stimulus_novelty, distractor_novelty,distractor_label) %>%
+                          stimulus_novelty, distractor_novelty,distractor_label,
+                          trial_stage) %>%
                    distinct())
 ```
 
