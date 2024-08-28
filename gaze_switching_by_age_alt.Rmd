@@ -44,39 +44,27 @@ and the second half of the trial after the critical event ("second half")
 ```{r tagging_switches}
 # mark fixations to target, distractor, missing or other (coded in the aoi variable)
 rle_data <- hand_coded_df %>%
-<<<<<<< Updated upstream
-  filter(any(t_norm == 0)) %>% # only pass data after 0
-  group_by(dataset_name, dataset_id, subject_id,
-           administration_id, trial_id) %>%
-  reframe(min_tnorm=min(t_norm),
-          max_tnorm=max(t_norm),
-    lengths = rle(aoi)$lengths, 
-            values = rle(aoi)$values) 
-
-rle_data_with_times <-
-  rle_data %>%
-  group_by(dataset_name, dataset_id, subject_id,
-           administration_id, trial_id) %>%
-=======
   filter(any(t_norm == 0)) %>% # only use trials that have data at t==0
-  group_by(dataset_name, dataset_id,subject_id, administration_id, trial_id) %>%
-  reframe(min_tnorm=min(t_norm), # compute the first time point in the trial
+  group_by(dataset_name, dataset_id, subject_id,
+           administration_id, trial_id) %>%
+  reframe(min_tnorm=min(t_norm),# compute the first time point in the trial
           max_tnorm=max(t_norm), # compute the last time point in the trial
     lengths = rle(aoi)$lengths, # get the length of the fixation
             values = rle(aoi)$values) # get the object of the fixation
 
 # add the onset and offset of fixations, as well as the stage
 # of the trial that the fixation ended in (meaning, where the switch occurred)
-# TO-DO: Ask Martin about sampling frequency and if we're using the correct onset and offset
-rle_data_with_times <- rle_data %>%
-  group_by(dataset_name, dataset_id,subject_id, administration_id, trial_id) %>%
->>>>>>> Stashed changes
+frames_per_second = 25
+rle_data_with_times <-
+  rle_data %>%
+  group_by(dataset_name, dataset_id, subject_id,
+           administration_id, trial_id) %>%
   mutate(
     total_trial_length=max_tnorm-min_tnorm, # get the duration of the trial
     cumulative_length_start = lag(cumsum(lengths),default=0), # onset of the fixation ()
     cumulative_length_end = cumsum(lengths), # ask Martin
-    t_start = min_tnorm+cumulative_length_start*25, # ask Martin
-    t_end = min_tnorm+(cumulative_length_end-1)*25,# ask Martin
+    t_start = min_tnorm+cumulative_length_start*frames_per_second, # ask Martin
+    t_end = min_tnorm+(cumulative_length_end-1)*frames_per_second,# ask Martin
     # marking the stage of the trial as:
     # "pre-critical": from the onset of the trial, till the critical event
     # "first half": from the critical event, till the halfway point of the post-critical event trial
