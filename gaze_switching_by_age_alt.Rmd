@@ -44,21 +44,23 @@ rle_data_with_times <- rle_data %>%
     trial_stage = ifelse(t_end < 0, "pre-critical",
                          ifelse(t_end < max_tnorm/2, "first half",
                                 "second half")))
-  #total_switches
-  # mutate(
+  # total_switches
+  # %>% mutate(
   #   switch_num=length(values)-1,
   #   switch_num_per_trial_len = switch_num/total_trial_length,
   #   length_ms=lengths*25
   # )
 
 #join back in relevant data
-rle_data_with_times <- left_join(rle_data_with_times,aoi_data_joined %>%
-                   select(subject_id, administration_id, trial_id, 
-                          age, dataset_name,
-                          vanilla_trial,target_label, target_side,
-                          stimulus_novelty, distractor_novelty,distractor_label,
-                          trial_stage) %>%
-                   distinct())
+rle_data_with_times <-
+  left_join(rle_data_with_times,
+            aoi_data_joined %>%
+              select(subject_id, administration_id, trial_id,
+                     age, dataset_name,
+                     vanilla_trial,target_label, target_side,
+                     stimulus_novelty, distractor_novelty,distractor_label) %>%
+              distinct())
+
 ```
 
 Average switches per administration
