@@ -34,7 +34,14 @@ In the future we may want to find an equivalent for eye-tracking datasets
 
 # select adams_marchman dataset (in the future this will be all hand-coded datasets)
 hand_coded_df <- aoi_data_joined %>%
-  filter(dataset_name == "adams_marchman_2018")
+  filter(coding_method == "manual gaze coding")
+```
+
+```{r descriptives}
+
+# Plot age distribution
+hist(hand_coded_df$age)
+
 ```
 
 Next, we tag all fixations with their start and end points, and
@@ -54,17 +61,17 @@ rle_data <- hand_coded_df %>%
 
 # add the onset and offset of fixations, as well as the stage
 # of the trial that the fixation ended in (meaning, where the switch occurred)
-frames_per_second = 25
+frames_per_second = 25 # this is a fixed number for Peekbank
 rle_data_with_times <-
   rle_data %>%
   group_by(dataset_name, dataset_id, subject_id,
            administration_id, trial_id) %>%
   mutate(
     total_trial_length=max_tnorm-min_tnorm, # get the duration of the trial
-    cumulative_length_start = lag(cumsum(lengths),default=0), # onset of the fixation ()
-    cumulative_length_end = cumsum(lengths), # ask Martin
-    t_start = min_tnorm+cumulative_length_start*frames_per_second, # ask Martin
-    t_end = min_tnorm+(cumulative_length_end-1)*frames_per_second,# ask Martin
+    cumulative_length_start = lag(cumsum(lengths),default=0), # onset of the fixation 
+    cumulative_length_end = cumsum(lengths), # offset of the fixation
+    t_start = min_tnorm+cumulative_length_start*frames_per_second, # convert to frames
+    t_end = min_tnorm+(cumulative_length_end-1)*frames_per_second,# convert to frames
     # marking the stage of the trial as:
     # "pre-critical": from the onset of the trial, till the critical event
     # "first half": from the critical event, till the halfway point of the post-critical event trial
@@ -91,7 +98,6 @@ stage of the trial)
 ```{r computing_switching_rate}
 
 # compute the switching rate
-# TO-DO: Ask Martin about length_ms
 rle_data_with_times <-
   rle_data_with_times %>%
   group_by(subject_id, trial_id, administration_id, trial_stage) %>%
@@ -99,12 +105,8 @@ rle_data_with_times <-
     switch_num=length(values)-1, # number of trials per trial stage
     switch_num_per_trial_len = switch_num/total_trial_length,
     # get switching rate by dividing the number of switches by the duration of the trial stage
-    length_ms=lengths*25 # ask Martin! 
+    length_ms=lengths*frames_per_second # ask Martin! 
   )
-
-```
-
-```{r}
 
 # create summary df for number of switches
 rle_data_with_times_switchnum_summary =
@@ -124,56 +126,148 @@ rle_data_with_times_switchlength_summary =
   summarise(mean = mean(length_ms),
             sd = sd(length_ms))
 
-```
-
-```{r}
-
-# Plot age distribution
-hist(rle_data_with_times$age)
 
 ```
+Next, we tag different types of switches. Specifically, we're tagging switches from 
+target or distractor into missing data (or other), as well as switches between 
+target and distractor
+```{r computing_proportion_of_switches_by_type}
 
-```{r}
+# getting the next fixation, so we can define each switch as a specific type 
+rle_data_with_times <- rle_data_with_times %>%
+          group_by(trial_id) %>%
+          mutate(values_next = lead(values, order_by = trial_id)) %>%
+          ungroup()
+
+# Tag switch types:
+# distractor -> missing/other
+# target -> missing/other
+# target -> distractor
+# distractor -> target
+
+switch_types <- rle_data_with_times %>%
+  group_by(trial_id,trial_stage, subject_id,age, administration_id) %>%
+  summarize(p_distractor2missing = mean(values == "distractor" & values_next %in% c("other","missing")),
+            p_target2missing = mean(values == "target" & values_next %in% c("other","missing")),
+            p_target2distractor = mean(values == "target" & values_next == "distractor"),
+            p_distractor2target = mean(values == "distractor" & values_next == "target")) %>%
+  ungroup()
+
+# Reorganize to long format, and compute average proportions of switches in each
+# category for each subject/administration by trial stage and switch type
+switch_types_summary <- switch_types %>%
+                      filter(trial_stage %in% c("first half", "second half")) %>%
+                      pivot_longer(
+                              cols = c(p_distractor2missing, p_target2missing,p_target2distractor,
+                                       p_distractor2target),
+                              names_to = "switch_type",
+                              values_to = "proportion_of_switch_type")%>%
+                      group_by(subject_id, administration_id, age,switch_type, trial_stage) %>%
+                      summarize(mean_proportion = mean(proportion_of_switch_type, na.rm = TRUE)) %>%
+                      ungroup()
+
+# Plotting changes in the proportion for each switch type with age
+ggplot(data = switch_types_summary %>% filter(switch_type %in% c('p_distractor2target','p_target2distractor')),
+       aes(x = age,
+           y = mean_proportion,
+           fill = switch_type,
+           color = switch_type)) +
+  facet_grid(rows = vars(trial_stage))+
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  #scale_x_continuous(#limits = c(6, 84),
+  #breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, .007),
+  #breaks = seq(0, .007, .001)) +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Age in months",
+     fill = "Trial Stage",
+     color = "Trial Stage") +
+  theme_minimal()
+
+# regression looking at switches between target and distractor
+summary(lm(mean_proportion ~ switch_type*age,switch_types_summary%>% filter(switch_type %in% c('p_distractor2target','p_target2distractor'))))
+
+
+
+# plot looking at switches to missing/other
+ggplot(data = switch_types_summary %>% filter(switch_type %in% c('p_distractor2missing','p_target2missing')),
+       aes(x = age,
+           y = mean_proportion,
+           fill = switch_type,
+           color = switch_type)) +
+  facet_grid(rows = vars(trial_stage))+
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  #scale_x_continuous(#limits = c(6, 84),
+  #breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, .007),
+  #breaks = seq(0, .007, .001)) +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Age in months",
+     fill = "Trial Stage",
+     color = "Trial Stage") +
+  theme_minimal()
+# regression looking at switches to missing/other
+summary(lm(mean_proportion ~ switch_type*age,switch_types_summary%>% filter(switch_type %in% c('p_distractor2missing','p_target2missing'))))
+```
+
+Plotting number of switches by age
+
+
+
+```{r n_switches_by_age}
 
 # number of switches by age and trial_stage
 ggplot(data = rle_data_with_times_switchnum_summary,
        aes(x = age,
            y = mean,
-           fill = trial_stage)) +
-  geom_point(alpha = .05,
-             aes(color = factor(trial_stage))) +
-  geom_smooth() +
-  scale_x_continuous(limits = c(6, 84),
-                     breaks = seq(6, 84, 6)) +
-  scale_y_continuous(limits = c(0, .007),
-                   breaks = seq(0, .007, .001)) +
+           fill = trial_stage,
+           color = trial_stage)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  #scale_x_continuous(#limits = c(6, 84),
+  #breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, .007),
+  #breaks = seq(0, .007, .001)) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Age in months",
      fill = "Trial Stage",
-     color = element_blank()) +
+     color = "Trial Stage") +
   theme_minimal()
 
-```
+# regression looking at number of switches by age for each trial stage
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('first half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('second half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
-```{r}
+```
+Plotting durations of fixations by age
+```{r fixation_durations_by_age}
 
 # length of switches by age and trial_stage
 ggplot(data = rle_data_with_times_switchlength_summary,
        aes(x = age,
            y = mean,
-           fill = trial_stage)) +
-  geom_point(alpha = .05,
-             aes(color = factor(trial_stage))) +
-  geom_smooth() +
-  scale_x_continuous(limits = c(6, 84),
-                     breaks = seq(6, 84, 6)) +
-  scale_y_continuous(limits = c(0, 11000),
-                     breaks = seq(0, 11000, 2750)) +
-  labs(y = "Mean Length of Switches",
+           fill = trial_stage,
+           color = trial_stage)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  #scale_x_continuous(limits = c(6, 84),
+  #                   breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, 11000),
+  #                   breaks = seq(0, 11000, 2750)) +
+  labs(y = "Mean Length of Fixations",
        x = "Age in months",
        fill = "Trial Stage",
-       color = element_blank()) +
+       color = "Trial Stage") +
   theme_minimal()
+
+
+# regression looking at duration of fixations by age for each trial stage
+summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('first half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('second half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
 ```
 
@@ -194,9 +288,7 @@ Average switches per administration
 #     avg_length=mean(length_ms),
 #     sd_length=sd(length_ms)
 #   )
-```
 
-```{r}
 # ggplot(admin_rle_data_with_times,aes(age,avg_switch_num)) +
 #   geom_point(alpha=0.1)+
 #   geom_smooth(method="lm")#+
@@ -206,5 +298,5 @@ Average switches per administration
 #   geom_point(alpha=0.1)+
 #   geom_smooth(method="loess",se=F)#+
 #   #facet_wrap(~dataset_name)
-
 ```
+
