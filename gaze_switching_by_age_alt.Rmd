@@ -44,12 +44,6 @@ rle_data_with_times <- rle_data %>%
     trial_stage = ifelse(t_end < 0, "pre-critical",
                          ifelse(t_end < max_tnorm/2, "first half",
                                 "second half")))
-  # total_switches
-  # %>% mutate(
-  #   switch_num=length(values)-1,
-  #   switch_num_per_trial_len = switch_num/total_trial_length,
-  #   length_ms=lengths*25
-  # )
 
 #join back in relevant data
 rle_data_with_times <-
@@ -61,7 +55,35 @@ rle_data_with_times <-
                      stimulus_novelty, distractor_novelty,distractor_label) %>%
               distinct())
 
+rle_data_with_times <-
+  rle_data_with_times %>%
+  group_by(subject_id, trial_id, administration_id, trial_stage) %>%
+  mutate(
+    switch_num=length(values)-1,
+    switch_num_per_trial_len = switch_num/total_trial_length,
+    length_ms=lengths*25
+  )
+
+rle_data_with_times_summary =
+  rle_data_with_times %>%
+  group_by(administration_id, subject_id, age, trial_stage) %>%
+  summarise(mean = mean(switch_num_per_trial_len),
+            sd = sd(switch_num_per_trial_len))
+
 ```
+
+```{r}
+
+ggplot(data = rle_data_with_times_summary,
+       aes(x = age,
+           y = mean,
+           fill = trial_stage)) +
+  geom_point() +
+  geom_smooth() +
+  theme_minimal()
+
+```
+
 
 Average switches per administration
 
