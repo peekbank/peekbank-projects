@@ -1,4 +1,4 @@
-image_1,image_2,distance
+target,distractor,distance
 /content/drive/My Drive/peekbank/image_sets/garrison_bergelson_2020/kitty12.jpg,/content/drive/My Drive/peekbank/image_sets/garrison_bergelson_2020/puppy14.jpg,0.575
 /content/drive/My Drive/peekbank/image_sets/garrison_bergelson_2020/elephant18.jpg,/content/drive/My Drive/peekbank/image_sets/garrison_bergelson_2020/book60.jpg,0.823
 /content/drive/My Drive/peekbank/image_sets/garrison_bergelson_2020/ball.jpg,/content/drive/My Drive/peekbank/image_sets/garrison_bergelson_2020/highchair.jpg,0.915
