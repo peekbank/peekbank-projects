@@ -79,14 +79,18 @@ rle_data_with_times <-
 # create summary df for number of switches
 rle_data_with_times_switchnum_summary =
   rle_data_with_times %>%
+  # group data by subject, administration session, age, and trial stage
   group_by(administration_id, subject_id, age, trial_stage) %>%
+  # get mean and SDs for number of switches, standardized by trial length
   summarise(mean = mean(switch_num_per_trial_len),
             sd = sd(switch_num_per_trial_len))
 
 # create summary df for length of switches
 rle_data_with_times_switchlength_summary =
   rle_data_with_times %>%
+  # group data by subject, administration session, age, and trial stage
   group_by(administration_id, subject_id, age, trial_stage) %>%
+  # get mean and SDs for LENGTH of switches
   summarise(mean = mean(length_ms),
             sd = sd(length_ms))
 
@@ -94,8 +98,8 @@ rle_data_with_times_switchlength_summary =
 
 ```{r}
 
-# age distribution
-hist(rle_data_with_times_switchnum_summary$age)
+# Plot age distribution
+hist(rle_data_with_times$age)
 
 ```
 
@@ -111,6 +115,12 @@ ggplot(data = rle_data_with_times_switchnum_summary,
   geom_smooth() +
   scale_x_continuous(limits = c(6, 84),
                      breaks = seq(6, 84, 6)) +
+  scale_y_continuous(limits = c(0, .007),
+                   breaks = seq(0, .007, .001)) +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Age in months",
+     fill = "Trial Stage",
+     color = element_blank()) +
   theme_minimal()
 
 ```
@@ -127,6 +137,12 @@ ggplot(data = rle_data_with_times_switchlength_summary,
   geom_smooth() +
   scale_x_continuous(limits = c(6, 84),
                      breaks = seq(6, 84, 6)) +
+  scale_y_continuous(limits = c(0, 11000),
+                     breaks = seq(0, 11000, 2750)) +
+  labs(y = "Mean Length of Switches",
+       x = "Age in months",
+       fill = "Trial Stage",
+       color = element_blank()) +
   theme_minimal()
 
 ```
