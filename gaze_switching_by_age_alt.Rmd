@@ -17,7 +17,8 @@ source("../peekbank-shiny/helpers/rt_helper.R")
 
 ## Developmental changes in gaze switching between target and distractor
 
-See notes here: https://docs.google.com/document/d/1ySCNzheHPT261JNX44VyonfwkapzK212TEMS3DFS4xA/edit
+See notes here:
+<https://docs.google.com/document/d/1ySCNzheHPT261JNX44VyonfwkapzK212TEMS3DFS4xA/edit>
 
 ```{r loading_data}
 # Loading peekbank data into a variable called aoi_data_joined
@@ -74,6 +75,14 @@ rle_data_with_times_summary =
 
 ```{r}
 
+# age distribution
+hist(rle_data_with_times_summary$age)
+
+```
+
+```{r}
+
+# number of switches by age and trial_stage
 ggplot(data = rle_data_with_times_summary,
        aes(x = age,
            y = mean,
@@ -84,36 +93,34 @@ ggplot(data = rle_data_with_times_summary,
 
 ```
 
+------------------------------------------------------------------------------------------
+
+MARTINS CODE
 
 Average switches per administration
 
 ```{r}
-admin_rle_data_with_times <- rle_data_with_times %>%
-  group_by(dataset_name, dataset_id,subject_id, administration_id,age,
-           vanilla_trial,target_label, target_side,
-           stimulus_novelty, distractor_novelty,distractor_label) %>%
-  summarize(
-    avg_switch_num = mean(switch_num,na.rm=T),
-    avg_switch_norm = mean(switch_num_per_trial_len),
-    avg_length=mean(length_ms),
-    sd_length=sd(length_ms)
-  )
+# admin_rle_data_with_times <- rle_data_with_times %>%
+#   group_by(dataset_name, dataset_id,subject_id, administration_id,age,
+#            vanilla_trial,target_label, target_side,
+#            stimulus_novelty, distractor_novelty,distractor_label) %>%
+#   summarize(
+#     avg_switch_num = mean(switch_num,na.rm=T),
+#     avg_switch_norm = mean(switch_num_per_trial_len),
+#     avg_length=mean(length_ms),
+#     sd_length=sd(length_ms)
+#   )
 ```
 
 ```{r}
-ggplot(admin_rle_data_with_times,aes(age,avg_switch_num)) +
-  geom_point(alpha=0.1)+
-  geom_smooth(method="lm")#+
-  #facet_wrap(~dataset_name)
-
-ggplot(admin_rle_data_with_times,aes(age,avg_length)) +
-  geom_point(alpha=0.1)+
-  geom_smooth(method="loess",se=F)#+
-  #facet_wrap(~dataset_name)
-
-
-
+# ggplot(admin_rle_data_with_times,aes(age,avg_switch_num)) +
+#   geom_point(alpha=0.1)+
+#   geom_smooth(method="lm")#+
+#   #facet_wrap(~dataset_name)
+# 
+# ggplot(admin_rle_data_with_times,aes(age,avg_length)) +
+#   geom_point(alpha=0.1)+
+#   geom_smooth(method="loess",se=F)#+
+#   #facet_wrap(~dataset_name)
 
 ```
-
-
