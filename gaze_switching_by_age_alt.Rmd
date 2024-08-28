@@ -24,6 +24,10 @@ theme_set(theme_classic() +
 See notes here:
 <https://docs.google.com/document/d/1ySCNzheHPT261JNX44VyonfwkapzK212TEMS3DFS4xA/edit>
 
+Next steps: [updated 08/28/2024]
+- connect number of switches and fixation duration to overall accuracy and RT
+- add image properties
+
 ```{r loading_data}
 # Loading peekbank data into a variable called aoi_data_joined
 load(here("cached_intermediates/1_aoi_data_joined.Rds"))
