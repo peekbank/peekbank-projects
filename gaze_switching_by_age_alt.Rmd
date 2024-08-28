@@ -13,6 +13,10 @@ library(dplyr)
 library(tidyr)
 
 source("../peekbank-shiny/helpers/rt_helper.R")
+
+theme_set(theme_classic() + 
+            theme(text = element_text(size = 20))) 
+
 ```
 
 ## Developmental changes in gaze switching between target and distractor
@@ -35,14 +39,17 @@ hand_coded_df <- aoi_data_joined %>%
 ```{r tagging_switches}
 rle_data <- hand_coded_df %>%
   filter(any(t_norm == 0)) %>% # only pass data after 0
-  group_by(dataset_name, dataset_id,subject_id, administration_id, trial_id) %>%
+  group_by(dataset_name, dataset_id, subject_id,
+           administration_id, trial_id) %>%
   reframe(min_tnorm=min(t_norm),
           max_tnorm=max(t_norm),
     lengths = rle(aoi)$lengths, 
             values = rle(aoi)$values) 
 
-rle_data_with_times <- rle_data %>%
-  group_by(dataset_name, dataset_id,subject_id, administration_id, trial_id) %>%
+rle_data_with_times <-
+  rle_data %>%
+  group_by(dataset_name, dataset_id, subject_id,
+           administration_id, trial_id) %>%
   mutate(
     total_trial_length=max_tnorm-min_tnorm,
     cumulative_length_start = lag(cumsum(lengths),default=0),
