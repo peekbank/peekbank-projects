@@ -54,13 +54,15 @@ aoi_data_joined <- all_aoi_timepoints |>
          stimulus_id, distractor_id, t_norm, age, aoi, english_stimulus_label, 
          stimulus_novelty, target_side, vanilla_trial,coding_method) %>%
   rename(target_label = english_stimulus_label, 
-         target_id = stimulus_id) %>%
+         target_id = stimulus_id, 
+          target_stimulus_image_path = stimulus_image_path) %>%
   left_join(all_stimuli %>%
               select(stimulus_id, dataset_id, 
                      stimulus_novelty, english_stimulus_label) %>%
               rename(distractor_id = stimulus_id, 
                      distractor_novelty = stimulus_novelty,
-                     distractor_label = english_stimulus_label))
+                     distractor_label = english_stimulus_label,
+                     distractor_stimulus_image_path = stimulus_image_path ))
 
 save(aoi_data_joined, file= here("cached_intermediates","1_aoi_data_joined.Rds"))
 ```
