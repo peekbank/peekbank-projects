@@ -121,6 +121,16 @@ rle_data_with_times_switchnum_summary =
   summarise(mean = mean(switch_num_per_trial_len),
             sd = sd(switch_num_per_trial_len))
 
+
+# create summary df for number of switches by trial type
+rle_data_with_times_switchnum_by_trial_type_summary =
+  rle_data_with_times %>%
+  # group data by subject, administration session, age, and trial stage
+  group_by(administration_id, subject_id, trial_stage,stimulus_novelty) %>%
+  # get mean and SDs for number of switches, standardized by trial length
+  summarise(mean = mean(switch_num_per_trial_len),
+            sd = sd(switch_num_per_trial_len))
+
 # create summary df for length of switches
 rle_data_with_times_switchlength_summary =
   rle_data_with_times %>%
@@ -131,10 +141,110 @@ rle_data_with_times_switchlength_summary =
             sd = sd(length_ms))
 
 
+
+
+
+```
+
+
+Plotting number of switches by age
+Summary: No developmental change in pre-critical event switches, but a decrease
+in switches during the post-critical event parts of the trial 
+(both first and second half)
+
+
+```{r n_switches_by_age}
+
+# number of switches by age and trial_stage
+ggplot(data = rle_data_with_times_switchnum_summary,
+       aes(x = age,
+           y = mean,
+           fill = trial_stage,
+           color = trial_stage)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  #scale_x_continuous(#limits = c(6, 84),
+  #breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, .007),
+  #breaks = seq(0, .007, .001)) +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Age in months",
+     fill = "Trial Stage",
+     color = "Trial Stage") +
+  theme_minimal()
+
+# regression looking at number of switches by age for each trial stage
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('first half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('second half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('pre-critical'))))
+
+```
+Number of switches by stimulus familiarity
+Summary: 
+There are fewer switches for familiar (compared to novel) stimuli:
+```{r switch_number_by_trial_type}
+# number of switches by age and trial_stage
+rle_data_with_times_switchnum_by_trial_type_summary$stimulus_novelty = as.factor(rle_data_with_times_switchnum_by_trial_type_summary$stimulus_novelty)
+
+rle_data_with_times_switchnum_by_trial_type_summary$trial_stage = factor(rle_data_with_times_switchnum_by_trial_type_summary$trial_stage, levels = c('pre-critical','first half','second half'))
+
+ggplot(data = rle_data_with_times_switchnum_by_trial_type_summary,
+       aes(x = trial_stage,
+           y = mean,
+           fill = stimulus_novelty,
+           color = stimulus_novelty)) +
+  geom_boxplot() +
+  #geom_smooth(method = 'lm') +
+  #scale_x_continuous(#limits = c(6, 84),
+  #breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, .007),
+  #breaks = seq(0, .007, .001)) +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Trial Stage",
+     fill = "Vanilla Trial",
+     color = "Vanilla Trial") +
+  theme_minimal()
+
+
+summary(lm(mean ~ stimulus_novelty, data = rle_data_with_times_switchnum_by_trial_type_summary))
+
+```
+
+Duration of fixations by age
+Summary: 
+The duration of fixations increases with age for all stages of the trial, but especially the last half of the post-critical event
+```{r fixation_durations_by_age}
+
+# length of switches by age and trial_stage
+ggplot(data = rle_data_with_times_switchlength_summary,
+       aes(x = age,
+           y = mean,
+           fill = trial_stage,
+           color = trial_stage)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  #scale_x_continuous(limits = c(6, 84),
+  #                   breaks = seq(6, 84, 6)) +
+  #scale_y_continuous(limits = c(0, 11000),
+  #                   breaks = seq(0, 11000, 2750)) +
+  labs(y = "Mean Length of Fixations",
+       x = "Age in months",
+       fill = "Trial Stage",
+       color = "Trial Stage") +
+  theme_minimal()
+
+
+
+# regression looking at duration of fixations by age for each trial stage
+summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('first half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('second half'))))
+summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('pre-critical'))))
+
 ```
 Next, we tag different types of switches. Specifically, we're tagging switches from 
 target or distractor into missing data (or other), as well as switches between 
 target and distractor
+
 ```{r computing_proportion_of_switches_by_type}
 
 # getting the next fixation, so we can define each switch as a specific type 
@@ -170,28 +280,6 @@ switch_types_summary <- switch_types %>%
                       summarize(mean_proportion = mean(proportion_of_switch_type, na.rm = TRUE)) %>%
                       ungroup()
 
-# Plotting changes in the proportion for each switch type with age
-ggplot(data = switch_types_summary %>% filter(switch_type %in% c('p_distractor2target','p_target2distractor')),
-       aes(x = age,
-           y = mean_proportion,
-           fill = switch_type,
-           color = switch_type)) +
-  facet_grid(rows = vars(trial_stage))+
-  geom_point(alpha = .05) +
-  geom_smooth(method = 'lm') +
-  #scale_x_continuous(#limits = c(6, 84),
-  #breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, .007),
-  #breaks = seq(0, .007, .001)) +
-  labs(y = "Mean # of Switches (Std. by Trial Length)",
-     x = "Age in months",
-     fill = "Trial Stage",
-     color = "Trial Stage") +
-  theme_minimal()
-
-# regression looking at switches between target and distractor
-summary(lm(mean_proportion ~ switch_type*age,switch_types_summary%>% filter(switch_type %in% c('p_distractor2target','p_target2distractor'))))
-
 
 
 # plot looking at switches to missing/other
@@ -214,67 +302,8 @@ ggplot(data = switch_types_summary %>% filter(switch_type %in% c('p_distractor2m
   theme_minimal()
 # regression looking at switches to missing/other
 summary(lm(mean_proportion ~ switch_type*age,switch_types_summary%>% filter(switch_type %in% c('p_distractor2missing','p_target2missing'))))
-```
-
-Plotting number of switches by age
-
-
-
-```{r n_switches_by_age}
-
-# number of switches by age and trial_stage
-ggplot(data = rle_data_with_times_switchnum_summary,
-       aes(x = age,
-           y = mean,
-           fill = trial_stage,
-           color = trial_stage)) +
-  geom_point(alpha = .05) +
-  geom_smooth(method = 'lm') +
-  #scale_x_continuous(#limits = c(6, 84),
-  #breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, .007),
-  #breaks = seq(0, .007, .001)) +
-  labs(y = "Mean # of Switches (Std. by Trial Length)",
-     x = "Age in months",
-     fill = "Trial Stage",
-     color = "Trial Stage") +
-  theme_minimal()
-
-# regression looking at number of switches by age for each trial stage
-summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('first half'))))
-summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('second half'))))
-summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
 ```
-Plotting durations of fixations by age
-```{r fixation_durations_by_age}
-
-# length of switches by age and trial_stage
-ggplot(data = rle_data_with_times_switchlength_summary,
-       aes(x = age,
-           y = mean,
-           fill = trial_stage,
-           color = trial_stage)) +
-  geom_point(alpha = .05) +
-  geom_smooth(method = 'lm') +
-  #scale_x_continuous(limits = c(6, 84),
-  #                   breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, 11000),
-  #                   breaks = seq(0, 11000, 2750)) +
-  labs(y = "Mean Length of Fixations",
-       x = "Age in months",
-       fill = "Trial Stage",
-       color = "Trial Stage") +
-  theme_minimal()
-
-
-# regression looking at duration of fixations by age for each trial stage
-summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('first half'))))
-summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('second half'))))
-summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('pre-critical'))))
-
-```
-
 ------------------------------------------------------------------------------------------
 
 MARTINS CODE
