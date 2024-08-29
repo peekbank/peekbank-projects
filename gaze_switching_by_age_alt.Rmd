@@ -31,6 +31,7 @@ Next steps: [updated 08/28/2024]
 ```{r loading_data}
 # Loading peekbank data into a variable called aoi_data_joined
 load(here("cached_intermediates/1_aoi_data_joined.Rds"))
+load(here("../peekbank-method/cached_intermediates/1_d_trial.Rds"))
 ```
 We select only datasets that were hand-coded (to keep the definition of switches a bit more consistent).
 In the future we may want to find an equivalent for eye-tracking datasets
@@ -47,6 +48,7 @@ hand_coded_df <- aoi_data_joined %>%
 hist(hand_coded_df$age)
 
 ```
+
 
 Next, we tag all fixations with their start and end points, and
 mark the 3 stages of the trial - before the critical event ("pre-critical"),
@@ -146,6 +148,43 @@ rle_data_with_times_switchlength_summary =
 
 ```
 
+```{r computing_ccuracy_and_RT}
+  rts_by_trial <- rle_data %>%
+                      group_by(administration_id, trial_id, subject_id) %>%
+                      nest() %>%
+                      mutate(data = lapply(data, get_rt)) %>%
+                      unnest(cols = c(data)) %>%
+                      left_join(d_trial %>%
+                                  select(-t_norm, -correct, -aoi) %>%
+                                  distinct())
+
+    rt_stats_by_participant <- rts_by_trial %>% 
+            filter(shift_start_rt > 300)%>%
+              group_by(administration_id, subject_id) %>%
+              summarise(nas = mean(is.na(shift_start_rt)), 
+                        too_fast = mean(shift_start_rt < 300, na.rm=TRUE), 
+                        d_t = mean(shift_type == "D-T", na.rm=TRUE), 
+                        t_d = mean(shift_type == "T-D", na.rm=TRUE),
+                        other = mean(shift_type == "other", na.rm=TRUE),
+                        no_shift = mean(shift_type == "no shift", na.rm=TRUE))
+
+
+  
+    accuracy_by_trial <- d_trial |>
+                  filter(t_norm > 200, t_norm < 2000) |>
+                  group_by(administration_id, trial_id) |>
+                  summarise(accuracy = mean(correct, na.rm=TRUE),
+                            prop_data = mean(!is.na(correct)))
+    
+    
+    accuracy_stats_by_participant <- accuracy_by_trial %>% 
+              group_by(administration_id) %>%
+              summarise(avg_accuracy = mean(accuracy, na.rm=TRUE))
+    
+    
+ 
+  
+```
 
 Plotting number of switches by age
 Summary: No developmental change in pre-critical event switches, but a decrease
@@ -163,10 +202,6 @@ ggplot(data = rle_data_with_times_switchnum_summary,
            color = trial_stage)) +
   geom_point(alpha = .05) +
   geom_smooth(method = 'lm') +
-  #scale_x_continuous(#limits = c(6, 84),
-  #breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, .007),
-  #breaks = seq(0, .007, .001)) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Age in months",
      fill = "Trial Stage",
@@ -178,7 +213,10 @@ summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stag
 summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('second half'))))
 summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
+
+
 ```
+
 Number of switches by stimulus familiarity
 Summary: 
 There are fewer switches for familiar (compared to novel) stimuli:
@@ -194,11 +232,6 @@ ggplot(data = rle_data_with_times_switchnum_by_trial_type_summary,
            fill = stimulus_novelty,
            color = stimulus_novelty)) +
   geom_boxplot() +
-  #geom_smooth(method = 'lm') +
-  #scale_x_continuous(#limits = c(6, 84),
-  #breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, .007),
-  #breaks = seq(0, .007, .001)) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Trial Stage",
      fill = "Vanilla Trial",
@@ -223,10 +256,6 @@ ggplot(data = rle_data_with_times_switchlength_summary,
            color = trial_stage)) +
   geom_point(alpha = .05) +
   geom_smooth(method = 'lm') +
-  #scale_x_continuous(limits = c(6, 84),
-  #                   breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, 11000),
-  #                   breaks = seq(0, 11000, 2750)) +
   labs(y = "Mean Length of Fixations",
        x = "Age in months",
        fill = "Trial Stage",
@@ -241,6 +270,56 @@ summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_s
 summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
 ```
+
+
+Looking at how switching between target and distractor relates to accuracy in the trial
+Kind of confusing skewed data, so a bit tricky to interpret?
+
+```{r accuracy_and_RT_by_number_of_pretrial_switches}
+  RT_and_switching_by_participant <-
+                  left_join(rle_data_with_times_switchnum_summary,
+                            rt_stats_by_participant %>%
+                              select(administration_id, subject_id,
+                                     avg_RT = d_t) %>%
+                              distinct())
+
+
+
+
+# length of switches by age and trial_stage
+ggplot(data = RT_and_switching_by_participant,
+       aes(x = mean,
+           y = avg_RT)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  labs(y = "Avegare RT (participant)",
+       x = "Switch rate for pre-critical event part of the trial") +
+  theme_minimal()
+summary(lm(avg_RT~mean+age,RT_and_switching_by_participant%>%filter(trial_stage == 'pre-critical')))
+
+  accuracy_and_switching_by_participant <-
+                  left_join(rle_data_with_times_switchnum_summary,
+                            accuracy_stats_by_participant %>%
+                              select(administration_id,avg_accuracy) %>%
+                              distinct())
+  
+  # length of switches by age and trial_stage
+ggplot(data = accuracy_and_switching_by_participant,
+       aes(x = mean,
+           y = avg_accuracy)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  labs(y = "Avegare accuracy (participant)",
+       x = "Switch rate for pre-critical event part of the trial") +
+  theme_minimal()
+
+summary(lm(avg_accuracy~mean+age,accuracy_and_switching_by_participant%>%filter(trial_stage == 'pre-critical')))
+
+```
+
+
+
+
 Next, we tag different types of switches. Specifically, we're tagging switches from 
 target or distractor into missing data (or other), as well as switches between 
 target and distractor
@@ -291,10 +370,6 @@ ggplot(data = switch_types_summary %>% filter(switch_type %in% c('p_distractor2m
   facet_grid(rows = vars(trial_stage))+
   geom_point(alpha = .05) +
   geom_smooth(method = 'lm') +
-  #scale_x_continuous(#limits = c(6, 84),
-  #breaks = seq(6, 84, 6)) +
-  #scale_y_continuous(limits = c(0, .007),
-  #breaks = seq(0, .007, .001)) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Age in months",
      fill = "Trial Stage",
