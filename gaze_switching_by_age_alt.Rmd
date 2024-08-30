@@ -70,6 +70,7 @@ hand_coded_df_age =
   # grab age per subject
        summarise(age = mean(age))
 
+Hmisc::describe(hand_coded_df_age$age)
 hist(hand_coded_df_age$age)
 
 ```
@@ -318,6 +319,37 @@ summary(lm(mean ~ stimulus_novelty, data = rle_data_with_times_switchnum_by_tria
 
 ```
 
+```{r}
+
+rle_data_with_times_switchnum_by_trial_type_summary_alt =
+  rle_data_with_times_switchnum_by_trial_type_summary %>%
+  mutate(trial_stage =
+           ifelse(trial_stage == "first half" |
+                       trial_stage == "second half",  "post-critical",
+                  trial_stage)
+         )
+
+```
+
+```{r}
+
+ggplot(data = rle_data_with_times_switchnum_by_trial_type_summary_alt,
+       aes(x = factor(trial_stage,
+                      levels = c("pre-critical", "post-critical")),
+           y = mean,
+           fill = stimulus_novelty,
+           color = stimulus_novelty)) +
+  geom_boxplot() +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Trial Stage",
+     fill = "Vanilla Trial",
+     color = "Vanilla Trial") +
+  theme_minimal()
+
+summary(lm(mean ~ stimulus_novelty, data = rle_data_with_times_switchnum_by_trial_type_summary_alt))
+
+```
+
 #### Duration of Fixation \~ Age (By Trial Stage)
 
 Duration of fixations by age Summary: The duration of fixations increases with age for all
@@ -345,6 +377,42 @@ ggplot(data = rle_data_with_times_switchlength_summary,
 summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('first half'))))
 summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('second half'))))
 summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('pre-critical'))))
+
+```
+
+```{r}
+
+# run plot and analyses with "first half" and "second half" collapsed
+rle_data_with_times_switchlength_summary_alt =
+  rle_data_with_times_switchlength_summary %>%
+  mutate(trial_stage =
+           ifelse(trial_stage == "first half" |
+                       trial_stage == "second half",  "post-critical",
+                  trial_stage)
+         )
+
+# length of switches by age and trial_stage
+ggplot(data = rle_data_with_times_switchlength_summary_alt,
+       aes(x = age,
+           y = mean,
+           fill = trial_stage,
+           color = trial_stage)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  scale_fill_manual(limits = c("pre-critical", "post-critical"),
+                    values = c("darkgreen", "darkblue")) +
+  scale_color_manual(limits = c("pre-critical", "post-critical"),
+                    values = c("darkgreen", "darkblue")) +
+  labs(y = "Mean Length of Fixations",
+       x = "Age in months",
+       fill = "Trial Stage",
+       color = "Trial Stage") +
+  theme_minimal()
+  
+# regression looking at duration of fixations by age for each trial stage
+summary(lm(mean ~ age + trial_stage + age*trial_stage + trial_stage + age*trial_stage,
+           rle_data_with_times_switchlength_summary_alt))
+summary(lm(mean ~ age + trial_stage + age*trial_stage,rle_data_with_times_switchlength_summary_alt))
 
 ```
 
