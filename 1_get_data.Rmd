@@ -52,13 +52,13 @@ aoi_data_joined <- all_aoi_timepoints |>
   left_join(all_stimuli) |>
   select(dataset_name, subject_id, administration_id, trial_id, trial_order, dataset_id, 
          stimulus_id, distractor_id, t_norm, age, aoi, english_stimulus_label, 
-         stimulus_novelty, target_side, vanilla_trial,coding_method) %>%
+         stimulus_novelty, target_side, vanilla_trial,coding_method,stimulus_image_path) %>%
   rename(target_label = english_stimulus_label, 
          target_id = stimulus_id, 
           target_stimulus_image_path = stimulus_image_path) %>%
   left_join(all_stimuli %>%
               select(stimulus_id, dataset_id, 
-                     stimulus_novelty, english_stimulus_label) %>%
+                     stimulus_novelty, english_stimulus_label,stimulus_image_path) %>%
               rename(distractor_id = stimulus_id, 
                      distractor_novelty = stimulus_novelty,
                      distractor_label = english_stimulus_label,
