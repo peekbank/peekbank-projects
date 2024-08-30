@@ -5,15 +5,19 @@ date: '2024-08-27'
 ---
 
 ```{r setup, include=FALSE}
+
+# load relevant libraries
 knitr::opts_chunk$set(echo = TRUE)
-library(here)
-library(data.table)
-library(ggplot2)
-library(dplyr)
+library(here)         # for wd management
+library(data.table)   # for data display
+library(ggplot2)      # for plotting
+library(dplyr)        # for everything else
 library(tidyr)
 
+# load helper file that computes RTs
 source("../peekbank-shiny/helpers/rt_helper.R")
 
+# set standard plotting theme
 theme_set(theme_classic() + 
             theme(text = element_text(size = 20))) 
 
@@ -24,36 +28,51 @@ theme_set(theme_classic() +
 See notes here:
 <https://docs.google.com/document/d/1ySCNzheHPT261JNX44VyonfwkapzK212TEMS3DFS4xA/edit>
 
-Next steps: [updated 08/28/2024]
-- connect number of switches and fixation duration to overall accuracy and RT
-- add image properties
+Next steps: [updated 08/28/2024] - connect number of switches and fixation duration to
+overall accuracy and RT - add image properties
 
 ```{r loading_data}
+
 # Loading peekbank data into a variable called aoi_data_joined
 load(here("cached_intermediates/1_aoi_data_joined.Rds"))
 load(here("../peekbank-method/cached_intermediates/1_d_trial.Rds"))
+
 ```
-We select only datasets that were hand-coded (to keep the definition of switches a bit more consistent).
-In the future we may want to find an equivalent for eye-tracking datasets
+
+We select only datasets that were hand-coded (to keep the definition of switches a bit
+more consistent). In the future we may want to find an equivalent for eye-tracking
+datasets
+
 ```{r selecting_datasets_for_analysis}
 
-# select adams_marchman dataset (in the future this will be all hand-coded datasets)
+# select all hand-coded data sets (tagged as "manual gaze coding")
 hand_coded_df <- aoi_data_joined %>%
   filter(coding_method == "manual gaze coding")
+
+Hmisc::describe(hand_coded_df$dataset_name) # k  = 17 data sets
+Hmisc::describe(hand_coded_df$subject_id) # N = 906 subjects
+
 ```
 
 ```{r descriptives}
 
-# Plot age distribution
-hist(hand_coded_df$age)
+# plot age distribution
+hand_coded_df_age =
+  hand_coded_df %>%
+  # collapse so that there is only one row per subject
+       group_by(subject_id) %>%
+  # grab age per subject
+       summarise(age = mean(age))
+
+hist(hand_coded_df_age$age)
 
 ```
 
+Next, we tag all fixations with their start and end points, and mark the 3 stages of the
+trial - before the critical event ("pre-critical"), the first half of the trial after the
+critical event ("first half"), and the second half of the trial after the critical event
+("second half")
 
-Next, we tag all fixations with their start and end points, and
-mark the 3 stages of the trial - before the critical event ("pre-critical"),
-the first half of the trial after the critical event ("first half"),
-and the second half of the trial after the critical event ("second half")
 ```{r tagging_switches}
 # mark fixations to target, distractor, missing or other (coded in the aoi variable)
 rle_data <- hand_coded_df %>%
@@ -98,9 +117,10 @@ rle_data_with_times <-
               distinct())
 ```
 
-Next, we are computing the rate of switching, defined as the number of switches
-divided by the duration of the interval of interest (in this case, the corresponding
-stage of the trial)
+Next, we are computing the rate of switching, defined as the number of switches divided by
+the duration of the interval of interest (in this case, the corresponding stage of the
+trial)
+
 ```{r computing_switching_rate}
 
 # compute the switching rate
@@ -142,10 +162,6 @@ rle_data_with_times_switchlength_summary =
   summarise(mean = mean(length_ms),
             sd = sd(length_ms))
 
-
-
-
-
 ```
 
 ```{r computing_ccuracy_and_RT}
@@ -186,11 +202,9 @@ rle_data_with_times_switchlength_summary =
   
 ```
 
-Plotting number of switches by age
-Summary: No developmental change in pre-critical event switches, but a decrease
-in switches during the post-critical event parts of the trial 
+Plotting number of switches by age Summary: No developmental change in pre-critical event
+switches, but a decrease in switches during the post-critical event parts of the trial
 (both first and second half)
-
 
 ```{r n_switches_by_age}
 
@@ -217,9 +231,9 @@ summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stag
 
 ```
 
-Number of switches by stimulus familiarity
-Summary: 
-There are fewer switches for familiar (compared to novel) stimuli:
+Number of switches by stimulus familiarity Summary: There are fewer switches for familiar
+(compared to novel) stimuli:
+
 ```{r switch_number_by_trial_type}
 # number of switches by age and trial_stage
 rle_data_with_times_switchnum_by_trial_type_summary$stimulus_novelty = as.factor(rle_data_with_times_switchnum_by_trial_type_summary$stimulus_novelty)
@@ -243,9 +257,9 @@ summary(lm(mean ~ stimulus_novelty, data = rle_data_with_times_switchnum_by_tria
 
 ```
 
-Duration of fixations by age
-Summary: 
-The duration of fixations increases with age for all stages of the trial, but especially the last half of the post-critical event
+Duration of fixations by age Summary: The duration of fixations increases with age for all
+stages of the trial, but especially the last half of the post-critical event
+
 ```{r fixation_durations_by_age}
 
 # length of switches by age and trial_stage
@@ -270,7 +284,6 @@ summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_s
 summary(lm(mean ~ age,rle_data_with_times_switchlength_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
 ```
-
 
 Looking at how switching between target and distractor relates to accuracy in the trial
 Kind of confusing skewed data, so a bit tricky to interpret?
@@ -317,12 +330,9 @@ summary(lm(avg_accuracy~mean+age,accuracy_and_switching_by_participant%>%filter(
 
 ```
 
-
-
-
-Next, we tag different types of switches. Specifically, we're tagging switches from 
-target or distractor into missing data (or other), as well as switches between 
-target and distractor
+Next, we tag different types of switches. Specifically, we're tagging switches from target
+or distractor into missing data (or other), as well as switches between target and
+distractor
 
 ```{r computing_proportion_of_switches_by_type}
 
@@ -379,6 +389,7 @@ ggplot(data = switch_types_summary %>% filter(switch_type %in% c('p_distractor2m
 summary(lm(mean_proportion ~ switch_type*age,switch_types_summary%>% filter(switch_type %in% c('p_distractor2missing','p_target2missing'))))
 
 ```
+
 ------------------------------------------------------------------------------------------
 
 MARTINS CODE
@@ -407,4 +418,3 @@ Average switches per administration
 #   geom_smooth(method="loess",se=F)#+
 #   #facet_wrap(~dataset_name)
 ```
-
