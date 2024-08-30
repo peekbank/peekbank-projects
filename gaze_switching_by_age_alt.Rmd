@@ -53,14 +53,14 @@ datasets
 hand_coded_df <- aoi_data_joined %>%
   filter(coding_method == "manual gaze coding")
 
-Hmisc::describe(hand_coded_df$dataset_name) # k  = 17 data sets
-Hmisc::describe(hand_coded_df$subject_id) # N = 906 subjects
-
 ```
 
 ### Descriptives
 
 ```{r descriptives}
+
+Hmisc::describe(hand_coded_df$dataset_name) # k  = 17 data sets
+Hmisc::describe(hand_coded_df$subject_id) # N = 906 subjects
 
 # plot age distribution
 hand_coded_df_age =
@@ -95,6 +95,7 @@ rle_data <- hand_coded_df %>%
 # add the onset and offset of fixations, as well as the stage
 # of the trial that the fixation ended in (meaning, where the switch occurred)
 frames_per_second = 25 # this is a fixed number for Peekbank
+
 rle_data_with_times <-
   rle_data %>%
   group_by(dataset_name, dataset_id, subject_id,
@@ -208,9 +209,6 @@ rle_data_with_times_switchlength_summary =
     accuracy_stats_by_participant <- accuracy_by_trial %>% 
               group_by(administration_id) %>%
               summarise(avg_accuracy = mean(accuracy, na.rm=TRUE))
-    
-    
- 
   
 ```
 
@@ -232,18 +230,61 @@ ggplot(data = rle_data_with_times_switchnum_summary,
            color = trial_stage)) +
   geom_point(alpha = .05) +
   geom_smooth(method = 'lm') +
+  scale_fill_manual(limits =
+                      c("Pre-Critical", "First Half", "Second Half"),
+                    values = scales::hue_pal()(3)) +
+  scale_color_manual(limits =
+                       c("Pre-Critical", "First Half", "Second Half"),
+                     values = scales::hue_pal()(3)) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Age in months",
      fill = "Trial Stage",
      color = "Trial Stage") +
   theme_minimal()
 
+```
+
+```{r}
+
 # regression looking at number of switches by age for each trial stage
 summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('first half'))))
 summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('second half'))))
 summary(lm(mean ~ age,rle_data_with_times_switchnum_summary%>% filter(trial_stage %in% c('pre-critical'))))
 
+```
 
+```{r}
+
+# run plot and analyses with "first half" and "second half" collapsed
+rle_data_with_times_switchnum_summary_alt =
+  rle_data_with_times_switchnum_summary %>%
+  mutate(trial_stage =
+           ifelse(trial_stage == "first half" |
+                       trial_stage == "second half",  "post-critical",
+                  trial_stage)
+         )
+
+# number of switches by age and trial_stage
+ggplot(data = rle_data_with_times_switchnum_summary_alt,
+       aes(x = age,
+           y = mean,
+           fill = trial_stage,
+           color = trial_stage)) +
+  geom_point(alpha = .05) +
+  geom_smooth(method = 'lm') +
+  labs(y = "Mean # of Switches (Std. by Trial Length)",
+     x = "Age in months",
+     fill = "Trial Stage",
+     color = "Trial Stage") +
+  theme_minimal()
+
+```
+
+```{r}
+
+# regression looking at number of switches by age for each trial stage
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary_alt%>% filter(trial_stage %in% c('post-critical'))))
+summary(lm(mean ~ age,rle_data_with_times_switchnum_summary_alt%>% filter(trial_stage %in% c('pre-critical'))))
 
 ```
 
