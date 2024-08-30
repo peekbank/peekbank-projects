@@ -230,12 +230,10 @@ ggplot(data = rle_data_with_times_switchnum_summary,
            color = trial_stage)) +
   geom_point(alpha = .05) +
   geom_smooth(method = 'lm') +
-  scale_fill_manual(limits =
-                      c("Pre-Critical", "First Half", "Second Half"),
-                    values = scales::hue_pal()(3)) +
-  scale_color_manual(limits =
-                       c("Pre-Critical", "First Half", "Second Half"),
-                     values = scales::hue_pal()(3)) +
+  scale_fill_manual(limits = c("pre-critical", "first half", "second half"),
+                    values = c("green", "red", "blue")) +
+  scale_color_manual(limits = c("pre-critical", "first half", "second half"),
+                     values = c("green", "red", "blue")) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Age in months",
      fill = "Trial Stage",
@@ -272,6 +270,10 @@ ggplot(data = rle_data_with_times_switchnum_summary_alt,
            color = trial_stage)) +
   geom_point(alpha = .05) +
   geom_smooth(method = 'lm') +
+  scale_fill_manual(limits = c("pre-critical", "post-critical"),
+                    values = c("darkgreen", "darkblue")) +
+  scale_color_manual(limits = c("pre-critical", "post-critical"),
+                    values = c("darkgreen", "darkblue")) +
   labs(y = "Mean # of Switches (Std. by Trial Length)",
      x = "Age in months",
      fill = "Trial Stage",
